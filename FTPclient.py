@@ -14,7 +14,7 @@ def print_response(msg):
 
 
 class FTP:
-    connection_type = 'PASV'
+    default_connection_type = 'PASV'
 
     def __init__(self, host='', user='',
                  password='', port=21):
@@ -101,14 +101,14 @@ class FTP:
 
     def set_mode(self, mode):
         if mode == 'PASV' or mode == 'PORT':
-            self.connection_type = mode
+            self.default_connection_type = mode
             return 'Mode now is ' + mode
         return 'Please set PASV or PORT'
 
     def get_connection(self):
-        if self.connection_type == 'PASV':
+        if self.default_connection_type == 'PASV':
             return self.pasv()
-        elif self.connection_type == 'PORT':
+        elif self.default_connection_type == 'PORT':
             return self.makeport()
 
     def noop(self):
@@ -122,7 +122,7 @@ class FTP:
             cmd = 'LIST'
         self.send_command(cmd)
         resp1 = self.get_resp()
-        if self.connection_type == 'PORT':
+        if self.default_connection_type == 'PORT':
             conn, addr = connection.sock.accept()
             connection.sock = conn
         resp2 = connection.get_resp()
@@ -132,7 +132,7 @@ class FTP:
     def nlst(self):
         resp, connection = self.get_connection()
         resp1 = self.send_command('NLST')
-        if self.connection_type == 'PORT':
+        if self.default_connection_type == 'PORT':
             conn, addr = connection.sock.accept()
             connection.sock = conn
         resp2 = connection.get_resp()
@@ -145,7 +145,7 @@ class FTP:
         filename = os.path.basename(name)
         size = self.size(filename).split(' ')[1]
         resp1 = self.send_command('RETR ' + name)
-        if self.connection_type == 'PORT':
+        if self.default_connection_type == 'PORT':
             conn, addr = connection.sock.accept()
             connection.sock = conn
         if resp1[:3] == '150' or resp1[:3] == '226':
@@ -183,7 +183,7 @@ class FTP:
         resp, connection = self.get_connection()
         filename = os.path.basename(path)
         resp1 = self.send_command('STOR ' + filename)
-        if self.connection_type == 'PORT':
+        if self.default_connection_type == 'PORT':
             conn, addr = connection.sock.accept()
             connection.sock = conn
         if resp1:
@@ -198,7 +198,7 @@ class FTP:
         """
         Создаем пассивное соединение для приема/передачи данных.
         """
-        self.connection_type = 'PASV'
+        self.default_connection_type = 'PASV'
         resp = self.send_command('PASV')
         host, port = parse_address(resp)
         connection = Connection(host, port, 'PASV')

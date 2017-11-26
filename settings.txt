@@ -1,4 +1,3 @@
-host=ftp.drivehq.com
-u=urfu2
-p=vjkjrj032
-w=213
+host=demo.wftpserver.com
+u=demo-user
+p=demo-user
