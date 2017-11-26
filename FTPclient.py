@@ -114,9 +114,13 @@ class FTP:
     def noop(self):
         return self.normal_sender('NOOP', '', 'all')
 
-    def list(self):
+    def list(self, name=None):
         resp, connection = self.get_connection()
-        self.send_command('LIST')
+        if name:
+            cmd = 'LIST ' + name
+        else:
+            cmd = 'LIST'
+        self.send_command(cmd)
         resp1 = self.get_resp()
         if self.connection_type == 'PORT':
             conn, addr = connection.sock.accept()
@@ -135,7 +139,7 @@ class FTP:
         resp3 = self.get_resp()
         return resp2
 
-    def retr(self, name):
+    def retr(self, name, path=None):
         """Download file"""
         resp, connection = self.get_connection()
         filename = os.path.basename(name)
@@ -145,11 +149,33 @@ class FTP:
             conn, addr = connection.sock.accept()
             connection.sock = conn
         if resp1[:3] == '150' or resp1[:3] == '226':
-            resp2 = connection.download_file(filename, int(size))
+            resp2 = connection.download_file(filename, int(size), path)
         else:
             return SERVER_ERROR + resp1
         resp3 = self.get_resp()
         return resp3
+
+    def retr_folder(self, folder_name, path=None):
+        """Download folder"""
+        current_folder = self.pwd().split('"')[1]
+        cwd_resp = self.cwd(folder_name)
+        if not cwd_resp.startswith('2'):
+            return 'Wrong folder name'
+        line_list = [x.split() for x in self.list().split('\r\n')]
+        if not path:
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), folder_name)
+        else:
+            path = os.path.join(path, folder_name)
+        for line in line_list:
+            if len(line) < 8:
+                continue
+            name = ' '.join(line[8:])
+            if line[0].startswith('dr'):
+                self.retr_folder(name, path)
+            else:
+                self.retr(name, path)
+        self.cwd(current_folder)
+        return 'Folder downloaded'
 
     def stor(self, path):
         if not os.path.isfile(path):
@@ -189,7 +215,6 @@ class FTP:
 
     def send_command(self, msg):
         """Send command to server"""
-        print(msg)
         msg += CRLF
         self.sock.sendall(msg.encode('utf-8'))
         return self.get_resp()
@@ -276,8 +301,15 @@ class Connection:
             x = 0
         return iteration, speed, start_time, x, delta
 
-    def download_file(self, filename, size):
+    def download_file(self, filename, size, folder=None):
         chunk_size = 4096
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if folder:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+        else:
+            folder = current_dir
+        filename = os.path.join(folder, filename)
         f = open(filename, 'wb')
         result = None
         temp_start = start = time.time()
@@ -325,13 +357,16 @@ class Connection:
         self.print_stat(time.time() - start, size)
         return 'File uploaded'
 
-    def print_progress_bar(self, iteration, total, speed=None, prefix='', suffix='', decimals=1, length=100, fill='█'):
-        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    def print_progress_bar(self, iteration, total, speed=None, prefix='',
+                           suffix='', decimals=1, length=100, fill='█'):
+        percent = ("{0:." + str(decimals) + "f}").format(
+            100 * (iteration / float(total)))
         filled_length = int(length * iteration // total)
         if filled_length > total:
             filled_length = total
         bar = fill * filled_length + '-' * (length - filled_length)
-        print('\r{} |{}| {}% {} {} kb/s'.format(prefix, bar, percent, suffix, speed), end='\r')
+        print('\r{} |{}| {}% {} {} kb/s'.format(
+            prefix, bar, percent, suffix, speed), end='\r')
         if iteration == total:
             print()
 

@@ -40,6 +40,7 @@ class Command:
     def get_cmd(self):
         ftp = self.FTP
         return {
+            'RETRFOLD': {'func': ftp.retr_folder, 'help': 'retrieve a remove folder'},
             'LIST': {'func': ftp.list, 'help': 'list remote files'},
             'CWD': {'func': ftp.cwd, 'help': 'change working directory'},
             'CDUP': {'func': ftp.cdup, 'help': 'CWD to the parent of the current directory'},
